@@ -1,25 +1,47 @@
+import React from 'react';
 import logo from './logo.svg';
 import './App.css';
 
-function App() {
-  return (
+class App extends React.Component {
+    render(){
+        return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+  
+    <canvas id="webgl" width="600" height="600">
+      Please use a browser that supports "canvas"
+    </canvas>
+    <br />
+
+    <div>
+      <button for="NormalView" id="NormalView">NormalView</button>
     </div>
-  );
+
+    <div>
+      <button for="LightingOn" id="LightingOn">Toggle Lighting</button>
+    </div>
+
+    <div>
+      <label for="SetPlainCubes">Set Number of Plain Cubes</label>
+      <input type="number" id="SetPlainCubes" name="SetPlainCubes" />
+    </div>
+    
+    <div>
+      <label for="fps">fps</label>
+      <output type="text" id="fps" name="fps" />
+    </div>
+
+    <br />
+    <div>
+      <label for="mouseX">mouseX</label>
+      <output type="text" id="mouseX" name="mouseX" />
+    </div>
+    Extras(?):
+    <br />
+    - This is just my old world. It runs a lot more efficiently though, and can handle about 500,000+ cubes on my computer. The sky I changed too. 
+    </div>
+                
+        );
+    }
 }
 
 export default App;
