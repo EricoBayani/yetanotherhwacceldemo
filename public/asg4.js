@@ -1,10 +1,122 @@
 // Some code lifted from textbook
 // Vertex shader program
-var VSHADER_SOURCE;
+var VSHADER_SOURCE = `precision mediump float;
+
+attribute vec4 a_Position;
+attribute vec4 a_Color;
+attribute vec3 a_Place;
+varying vec4 v_Color;
+
+uniform mat4 u_ModelMatrix;
+uniform mat4 u_ProjectionMatrix;
+uniform mat4 u_ViewMatrix;
+
+uniform mat4 u_NormalMatrix;
+
+attribute vec2 a_TexCoord;
+varying vec2 v_TexCoord;
+
+attribute vec3 a_Normal;
+varying vec3 v_Normal;
+varying vec4 v_NormalDebug;
+
+uniform vec3 u_LightPos;
+varying vec3 v_LightPos;
+
+varying vec4 v_WorldPos;
+uniform vec3 u_CameraPos;
+varying vec3 v_CameraPos;
+
+
+void main() {
+  vec4 combinedPosition = vec4(a_Place,1) + a_Position;
+  // Set the vertex coordinates of the point
+  gl_Position = u_ProjectionMatrix * u_ViewMatrix * u_ModelMatrix * combinedPosition;
+  v_Color = a_Color;
+  v_TexCoord = a_TexCoord;
+  v_Normal = vec3(u_NormalMatrix * (vec4(a_Normal, 0)) + combinedPosition);
+  v_NormalDebug = vec4(a_Normal, 1);
+  v_LightPos = u_LightPos;
+  v_CameraPos = u_CameraPos;
+  v_WorldPos = u_ModelMatrix * combinedPosition;
+}
+`;
 
 // there's a uniform int variable that tells what texture unit to use: 0 is for wall, 1 is for sky, 2 is for ground
 // Fragment shader program
-var FSHADER_SOURCE;
+var FSHADER_SOURCE = `precision mediump float;
+varying vec4 v_Color;
+
+uniform int u_WhichTex;
+uniform sampler2D u_SamplerWall;
+uniform sampler2D u_SamplerSky;
+uniform sampler2D u_SamplerGround;
+varying vec2 v_TexCoord;
+uniform float u_TexColorWeight;
+
+varying vec3 v_Normal;
+uniform bool u_NormalViewOn;
+varying vec4 v_NormalDebug;
+
+varying float v_Lighting;
+varying vec3 v_LightPos;
+varying vec3 v_CameraPos;
+varying vec4 v_WorldPos;
+uniform bool u_LightingOn;
+
+void main() {
+  vec4 texColorWall = texture2D(u_SamplerWall, v_TexCoord);
+  vec4 texColorSky = texture2D(u_SamplerSky, v_TexCoord);
+  vec4 texColorGround = texture2D(u_SamplerGround, v_TexCoord);
+  vec4 texColor;
+
+  if(u_WhichTex ==  0)
+    texColor = texColorWall;
+  else if(u_WhichTex ==  1)
+    texColor = texColorSky;
+  else if(u_WhichTex ==  2)
+    texColor = texColorGround;
+
+  vec4 finalColor = (u_TexColorWeight * texColor) + ((1.0 - u_TexColorWeight) * v_Color);
+  if (u_NormalViewOn == true)    
+    finalColor = abs(v_NormalDebug);
+
+  vec4 cameraPos = vec4(v_CameraPos, 1.0);
+  /* vec4 worldPos = vec4(v_WorldPos, 1.0); */
+  if(u_LightingOn){
+    // calculator the lighting things    
+    vec4 lightVector = v_WorldPos + vec4(v_LightPos,1);
+    vec4 normLightPos = normalize(lightVector);
+    vec4 normWorldPos = normalize(vec4(v_Normal, 0.0));
+    float lighting = max(dot(normLightPos, normWorldPos),0.0);
+    vec4 ambient = vec4(0.2, 0.2, 0.2, 1.0);
+
+    
+    vec4 diffuse = finalColor * max(dot(normLightPos, normWorldPos),0.0);
+
+    float specExp = 2.0;
+    vec4 specColor = vec4(0.8, 0.8,0.8, 1.0);
+    vec4 normCameraPos = normalize(cameraPos + v_WorldPos);
+    vec4 bisectorVector = ((normLightPos + normCameraPos))/length(normLightPos + normCameraPos);
+    float specValue = pow(max(dot(normWorldPos,bisectorVector),0.0),specExp);
+    vec4 specular = specColor * specValue;
+
+    
+    
+    if(u_WhichTex == 1){
+      gl_FragColor = finalColor;
+    }
+    else{
+      /* float distanceFromLight = 0.5*(max(distance(cameraPos,v_WorldPos),2.0)); */
+      /* gl_FragColor = (ambient + diffuse + specular) / distanceFromLight; */
+      gl_FragColor = (ambient + diffuse + specular);
+    }
+  }
+  else {
+    gl_FragColor = finalColor;
+  }
+}
+`;
 
 // == Globals ==
 
@@ -275,22 +387,22 @@ function loadTexture(textureUnit, texture, image, sampler, which){
 }
 
 
-// code stolen from https://stackoverflow.com/a/53374514
-function loadTextFile(url) {
-  return fetch(url).then(response => response.text());
-}
-const urls = [
-    './vertexShader.glsl',
-    './fragmentShader.glsl'
-    ]
-async function fetchShaders(){
+// // code stolen from https://stackoverflow.com/a/53374514
+// function loadTextFile(url) {
+//   return fetch(url).then(response => response.text());
+// }
+// const urls = [
+//     './vertexShader.glsl',
+//     './fragmentShader.glsl'
+//     ]
+// async function fetchShaders(){
     
-    const files = await Promise.all(urls.map(loadTextFile));
-    VSHADER_SOURCE = files[0];
-    FSHADER_SOURCE = files[1];
+//     const files = await Promise.all(urls.map(loadTextFile));
+//     VSHADER_SOURCE = files[0];
+//     FSHADER_SOURCE = files[1];
 
     
-}
+// }
 
 // let g_startTime = performance.now()/1000.0;
 // let g_seconds = performance.now()/1000.0 - g_startTime;
@@ -306,9 +418,9 @@ async function fetchShaders(){
 
 
 async function main() {
-    const files = await Promise.all(urls.map(loadTextFile));
-    VSHADER_SOURCE = files[0];
-    FSHADER_SOURCE = files[1];
+    // const files = await Promise.all(urls.map(loadTextFile));
+    // VSHADER_SOURCE = files[0];
+    // FSHADER_SOURCE = files[1];
 
     // console.log(VSHADER_SOURCE);
     // console.log(FSHADER_SOURCE);    
